@@ -1,4 +1,6 @@
 void mainSetUp();          // Стартовые настройки
 float getPressure();       // Получение давления в барах
 float getFilterPressure(); // Проверка полученного давления
-void printToSerialPort();  // Тестовый вывод в консоль
+void closeValve();         // Функция ЗАКРЫТИЯ клапана
+void openValve();          // Функция ОТКРЫТИЯ клапана
+void mainLoop();           // Главный цикл опроса и управления клапаном

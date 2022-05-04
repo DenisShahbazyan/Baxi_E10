@@ -2,16 +2,6 @@
 #include "./header/data_sensors.h"
 
 /*
- * Объявление констант
- */
-const int SLEEP_PRESSURE_SENSOR = 1000 * 1; // каждые 30 секунд отпрашивать датчик давления
-
-/*
- * Объявление переменнных
- */
-unsigned long lastTimePressure = 0; // millis для опроса датчика давления
-
-/*
  * Стартовые настройки проекта / датчиков.
  * Устанавливаем скорость серийного порта ардуино.
  * Заставляем работать пины как входы / выходы (INPUT / OUTPUT.
@@ -36,6 +26,7 @@ void mainSetUp()
  */
 float getPressure()
 {
+    // TODO: Протестировать показания датчика с насосом!!!
     int pressurePascal = analogRead(PIN_PRESSURE_SENSOR);
     //  float pressureBar = map(pressurePascal, 102, 920, 0, 12);
     float pressureBar = ((pressurePascal - 102) * 12 / 819); // Проверить формулу.
@@ -49,19 +40,15 @@ float getPressure()
  */
 float getFilterPressure()
 {
-    float ERR = 99.9;
-    float deviationBar = 1.0;
+    float ERR = 99.9;         // Ошибка
+    float deviationBar = 1.0; // Макс. отклонение в давлении
 
     byte SIZE = 10;
     float value[SIZE];
 
-    // Создаем массив с значениями.
     for (byte i = 0; i < SIZE; i++)
-    {
         value[i] = getPressure();
-    }
 
-    // Находим Max, Min, Avg значения.
     float min_value = value[0];
     float max_value = value[0];
     float avg_value = 0;
@@ -80,15 +67,54 @@ float getFilterPressure()
     return ERR;
 }
 
-/*
- *
- */
-void printToSerialPort()
+/* Функция ЗАКРЫТИЯ клапана */
+void closeValve()
 {
-    if (millis() - lastTimePressure > SLEEP_PRESSURE_SENSOR)
-    {
-        lastTimePressure = millis();
+    digitalWrite(PIN_RELAY_00, HIGH);
+}
 
-        Serial.println(getFilterPressure());
+/* Функция ОТКРЫТИЯ клапана */
+void openValve()
+{
+    digitalWrite(PIN_RELAY_00, LOW);
+}
+
+/*
+ * Основной цикл програмы.
+ * Опрашивает датчик давления с заданным интервалом, и проверяет границы
+ * давления. Давление в системе должно быть от ~1.5 ... ~3.0 Bar.
+ *
+ * Если давление больше минимального, закрываем клапан (ничего не делаем).
+ * Если давление меньше минимального - открываем клапан и в цикле ждем
+ * 500 мс, после ожидания заного проверяем давление, если больше или равно
+ * необходимо закрываем клапан, иначе держим клапан открытым и снова ждем
+ * 500 мс.
+ *
+ * При подкачке давления проверяем давление, чтобы не скакнуть выше максимума.
+ * Порог накачки давления должен быть ниже максимума.
+ */
+void mainLoop()
+{
+    float MIN_PRESSURE = 1.5;  // Минимальное давление в системе
+    float NEED_PRESSURE = 2.0; // Необходимое давление в системе
+
+    int DELAY = 500;            // Задержка для накачки системы в цикле
+    int DELAY_LOOP = 1000 * 30; // Задержка главного цикла
+
+    float pressure = getFilterPressure();
+    if (pressure >= MIN_PRESSURE)
+        closeValve();
+
+    if (pressure < MIN_PRESSURE)
+    {
+        openValve();
+        while (pressure <= NEED_PRESSURE)
+        {
+            delay(DELAY);
+            pressure = getFilterPressure();
+        }
+        closeValve();
     }
+
+    delay(DELAY_LOOP);
 }
