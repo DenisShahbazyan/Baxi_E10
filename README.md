@@ -17,7 +17,7 @@
 ### Запуск веб-сервера::
 - Склонируйте проект на Ваш компьютер 
 ```sh 
-git clone https://github.com/DenisShahbazyan/foodgram-project-react.git
+git clone https://github.com/DenisShahbazyan/Baxi_E10.git
 ``` 
 - Загрузить в микроконтроллер
 
